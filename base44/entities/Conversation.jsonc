@@ -1,0 +1,40 @@
+{
+  "name": "Conversation",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "permanent",
+        "temporary",
+        "scheduled"
+      ],
+      "default": "permanent"
+    },
+    "language": {
+      "type": "string",
+      "default": "en"
+    },
+    "scheduled_for": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "last_message_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "shared": {
+      "type": "boolean",
+      "default": false
+    },
+    "shared_title": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "title"
+  ]
+}
