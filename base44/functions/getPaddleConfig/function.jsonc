@@ -1,0 +1,4 @@
+{
+  "name": "getPaddleConfig",
+  "entry": "entry.ts"
+}

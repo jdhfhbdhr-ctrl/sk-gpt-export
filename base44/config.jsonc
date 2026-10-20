@@ -1,5 +1,5 @@
 {
-  "name": "SK GPT",
+  "name": "SK Gpt ai",
   "site": {
     "installCommand": "npm install",
     "buildCommand": "npm run build",
