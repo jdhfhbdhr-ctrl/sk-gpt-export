@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,21 +10,18 @@ export default function Settings() {
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
-    (async () => {
-      try {
-        const me = await base44.auth.me();
-        setLanguage(me?.language || 'en');
-        setTheme(me?.theme || 'light');
-      } catch (_e) { /* ignore */ }
-    })();
+    setLanguage(localStorage.getItem('sk-gpt-language') || 'en');
+    setTheme(localStorage.getItem('sk-gpt-theme') || 'light');
   }, []);
 
-  const save = async () => {
-    try {
-      await base44.auth.updateMe({ language, theme });
-      setSaved(true);
-      setTimeout(() => setSaved(false), 2000);
-    } catch (_e) { /* ignore */ }
+  const save = () => {
+    localStorage.setItem('sk-gpt-language', language);
+    localStorage.setItem('sk-gpt-theme', theme);
+
+    document.documentElement.classList.toggle('dark', theme === 'dark');
+
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
   };
 
   return (
@@ -37,9 +33,18 @@ export default function Settings() {
         <Card className="mt-6">
           <CardHeader><CardTitle>Account</CardTitle></CardHeader>
           <CardContent className="space-y-2 text-sm">
-            <div className="flex justify-between"><span className="text-muted-foreground">Name</span><span>{user?.full_name || '—'}</span></div>
-            <div className="flex justify-between"><span className="text-muted-foreground">Email</span><span>{user?.email}</span></div>
-            <div className="flex justify-between"><span className="text-muted-foreground">Role</span><span className="capitalize">{user?.role || 'user'}</span></div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Name</span>
+              <span>{user?.displayName || '—'}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Email</span>
+              <span>{user?.email || '—'}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Role</span>
+              <span className="capitalize">user</span>
+            </div>
           </CardContent>
         </Card>
 
@@ -48,20 +53,29 @@ export default function Settings() {
           <CardContent className="space-y-4">
             <div>
               <label className="mb-1.5 block text-sm font-medium">Default language</label>
-              <select value={language} onChange={(e) => setLanguage(e.target.value)} className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm">
-                <option value="en">English</option><option value="es">Spanish</option><option value="fr">French</option>
-                <option value="de">German</option><option value="ar">Arabic</option><option value="zh">Chinese</option>
-                <option value="ja">Japanese</option><option value="hi">Hindi</option><option value="ur">Urdu</option>
-                <option value="bn">Bengali</option><option value="fa">Persian</option><option value="he">Hebrew</option>
-                <option value="tr">Turkish</option><option value="id">Indonesian</option><option value="ru">Russian</option>
+              <select value={language} onChange={(e) => setLanguage(e.target.value)}
+                className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm">
+                <option value="en">English</option><option value="es">Spanish</option>
+                <option value="fr">French</option><option value="de">German</option>
+                <option value="ar">Arabic</option><option value="zh">Chinese</option>
+                <option value="ja">Japanese</option><option value="hi">Hindi</option>
+                <option value="ur">Urdu</option><option value="bn">Bengali</option>
+                <option value="fa">Persian</option><option value="he">Hebrew</option>
+                <option value="tr">Turkish</option><option value="id">Indonesian</option>
+                <option value="ru">Russian</option>
               </select>
             </div>
+
             <div>
               <label className="mb-1.5 block text-sm font-medium">Theme</label>
-              <select value={theme} onChange={(e) => setTheme(e.target.value)} className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm">
-                <option value="light">Light</option><option value="dark">Dark</option><option value="system">System</option>
+              <select value={theme} onChange={(e) => setTheme(e.target.value)}
+                className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm">
+                <option value="light">Light</option>
+                <option value="dark">Dark</option>
+                <option value="system">System</option>
               </select>
             </div>
+
             <div className="flex items-center gap-3">
               <Button onClick={save}>Save changes</Button>
               {saved && <span className="text-sm text-emerald-600">Saved</span>}

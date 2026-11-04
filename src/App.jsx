@@ -18,6 +18,7 @@ import About from '@/pages/About';
 import Home from '@/pages/Home';
 import History from '@/pages/History';
 import Settings from '@/pages/Settings';
+import SKFeatures from '@/pages/SKFeatures';
 import Upgrade from '@/pages/Upgrade';
 import Login from '@/pages/Login';
 import Register from '@/pages/Register';
@@ -70,6 +71,7 @@ const AuthenticatedApp = () => {
           <Route path="/chat" element={<Home />} />
           <Route path="/history" element={<History />} />
           <Route path="/settings" element={<Settings />} />
+          <Route path="/features" element={<SKFeatures />} />
           <Route path="/upgrade" element={<PaddleProvider><Upgrade /></PaddleProvider>} />
         </Route>
       </Route>
