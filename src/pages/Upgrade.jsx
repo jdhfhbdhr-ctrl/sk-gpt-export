@@ -11,9 +11,9 @@ const PLANS = [
     name: 'Starter',
     icon: Sparkles,
     tagline: 'For getting started',
-    monthly: { price: 9, priceId: 'pri_01m3njmbfvtrva67ms8aje3cja' },
-    yearly: { price: 89, priceId: 'pri_01m3njsfkp8ycaznt1qw40agf' },
-    features: ['Fast multilingual AI chat', 'Generate up to 50 images / mo', 'PDF file analysis', 'Conversation history', '7-day free trial']
+    monthly: { price: 7, priceId: 'pri_01m6km6rw9qgz850yzmkkp8hwy' },
+    yearly: { price: 70, priceId: 'pri_01m6kmben7n1aafbjtyba6wee0' },
+    features: ['Fast multilingual AI chat', 'Generate up to 50 images / mo', 'PDF file analysis', 'Conversation history', 'No free trial']
   },
   {
     id: 'pro',
@@ -21,18 +21,18 @@ const PLANS = [
     icon: Zap,
     tagline: 'For power users',
     highlighted: true,
-    monthly: { price: 29, priceId: 'pri_01m3njwgehg568vq19xym2h4d0' },
-    yearly: { price: 279, priceId: 'pri_01m3nk5jncvzpyr3bb2dkd4dw5' },
-    features: ['Everything in Starter', 'Generate up to 300 images / mo', 'Scheduled & temporary chats', 'Priority response speed', 'All 20+ languages', '7-day free trial']
+    monthly: { price: 18, priceId: 'pri_01m6kmkqad3gwgy9zvyj3nz2cg' },
+    yearly: { price: 180, priceId: 'pri_01m6kmq8d2yyrrzwr22g8scskg' },
+    features: ['Everything in Starter', 'Generate up to 300 images / mo', 'Scheduled & temporary chats', 'Priority response speed', 'All 20+ languages', 'No free trial']
   },
   {
     id: 'advanced',
     name: 'Advanced',
     icon: Crown,
     tagline: 'For teams & creators',
-    monthly: { price: 59, priceId: 'pri_01m3njz2axr0b0qf6tjey62rpp' },
-    yearly: { price: 569, priceId: 'pri_01m3nkd9md8s8867hewhsxs2f2' },
-    features: ['Everything in Pro', 'Unlimited image generation', 'Advanced PDF & document tools', 'Highest priority speed', 'Early access to new features', '7-day free trial']
+    monthly: { price: 98, priceId: 'pri_01m6kmw26de7rn74f6mcd2wxrw' },
+    yearly: { price: 980, priceId: 'pri_01m6kmy63ry7mkz9jqp8vzsnxe' },
+    features: ['Everything in Pro', 'Unlimited image generation', 'Advanced PDF & document tools', 'Highest priority speed', 'Early access to new features', 'No free trial']
   }
 ];
 
@@ -75,7 +75,7 @@ export default function Upgrade() {
           </div>
           <h1 className="font-display text-3xl font-semibold tracking-tight">Upgrade your plan</h1>
           <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
-            Pick a plan to unlock faster responses, image generation, and more. Every plan starts with a 7-day free trial.
+            Pick a plan to unlock faster responses, image generation, and more. Choose a plan with immediate paid access.
           </p>
         </div>
 
@@ -134,7 +134,7 @@ export default function Upgrade() {
                   <span className="font-display text-4xl font-bold tracking-tight">${config.price}</span>
                   <span className="mb-1 text-sm text-muted-foreground">/{cycle === 'yearly' ? 'year' : 'month'}</span>
                 </div>
-                <p className="mt-1 text-xs text-emerald-600 font-medium">7-day free trial included</p>
+                <p className="mt-1 text-xs text-emerald-600 font-medium">No free trial</p>
 
                 <Button
                   className="mt-5 w-full"

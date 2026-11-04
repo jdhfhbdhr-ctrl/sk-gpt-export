@@ -1,5 +1,4 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import { base44 } from '@/api/base44Client';
 
 const PaddleContext = createContext({ ready: false, error: null, openCheckout: async () => {} });
 
@@ -36,12 +35,12 @@ export default function PaddleProvider({ children }) {
     let active = true;
     (async () => {
       try {
-        const res = await base44.functions.invoke('getPaddleConfig', {});
-        if (!res || !res.data || !res.data.clientToken) {
-          if (active) setError('Paddle is not configured. Add your live client token in Settings → Secrets.');
+        const clientToken = import.meta.env.VITE_PADDLE_CLIENT_TOKEN;
+        const environment = import.meta.env.VITE_PADDLE_ENV || 'sandbox';
+        if (!clientToken) {
+          if (active) setError('Paddle Sandbox client-side token is missing from the environment.');
           return;
         }
-        const { clientToken, environment } = res.data;
         const tokenPrefix = typeof clientToken === 'string' ? clientToken.slice(0, 5) : '';
         console.log('[Paddle] config received', { environment, tokenPrefix, hasToken: Boolean(clientToken) });
         await loadPaddleScript();
