@@ -59,6 +59,7 @@ const AuthenticatedApp = () => {
       <Route path="/reset-password" element={<ResetPassword />} />
       {/* Public landing page — no login required */}
       <Route path="/" element={<Landing />} />
+      <Route path="/pricing" element={<Pricing />} />
       {/* Public legal pages — required for Paddle website approval */}
       <Route path="/terms" element={<Terms />} />
       <Route path="/privacy" element={<Privacy />} />
