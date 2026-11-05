@@ -53,7 +53,7 @@ export default function Landing() {
               <Link to="/login">Log in</Link>
             </Button>
           </div>
-          <p className="mt-3 text-xs text-muted-foreground">No credit card needed to explore · 7-day free trial on every plan</p>
+          <p className="mt-3 text-xs text-muted-foreground">No credit card needed to explore · No free trial. Choose a paid plan.</p>
         </div>
       </section>
 
@@ -81,14 +81,14 @@ export default function Landing() {
           <div className="text-center">
             <h2 className="font-display text-2xl font-bold tracking-tight">Simple, transparent pricing</h2>
             <p className="mx-auto mt-2 max-w-xl text-sm text-muted-foreground">
-              Every plan starts with a 7-day free trial. Choose monthly or yearly — yearly saves around 17%.
+              Choose monthly or yearly billing. No free trial.
             </p>
           </div>
           <div className="mt-7 grid gap-4 sm:grid-cols-3">
             {[
-              { name: 'Starter', price: 9, tag: 'For getting started', feats: ['Multilingual AI chat', 'Up to 50 images / mo', 'PDF file analysis'], hot: false },
-              { name: 'Pro', price: 29, tag: 'For power users', feats: ['Everything in Starter', 'Up to 300 images / mo', 'Priority response speed'], hot: true },
-              { name: 'Advanced', price: 59, tag: 'For teams & creators', feats: ['Everything in Pro', 'Unlimited images', 'Early access features'], hot: false }
+              { name: 'Starter', price: 7, tag: 'For getting started', feats: ['Multilingual AI chat', 'Up to 50 images / mo', 'PDF file analysis'], hot: false },
+              { name: 'Pro', price: 18, tag: 'For power users', feats: ['Everything in Starter', 'Up to 300 images / mo', 'Priority response speed'], hot: true },
+              { name: 'Advanced', price: 98, tag: 'For teams & creators', feats: ['Everything in Pro', 'Unlimited images', 'Early access features'], hot: false }
             ].map((p) => (
               <div key={p.name} className={`relative flex flex-col rounded-2xl border p-5 ${p.hot ? 'border-primary shadow-sm ring-1 ring-primary' : 'bg-card'}`}>
                 {p.hot && (
@@ -109,7 +109,7 @@ export default function Landing() {
                   ))}
                 </ul>
                 <Button asChild variant={p.hot ? 'default' : 'outline'} size="sm" className="mt-5 w-full">
-                  <Link to="/register">Start free trial</Link>
+                  <Link to="/register">Choose plan</Link>
                 </Button>
               </div>
             ))}
