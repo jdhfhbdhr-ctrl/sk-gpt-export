@@ -11,6 +11,7 @@ import ProtectedRoute from '@/components/ProtectedRoute';
 import PaddleProvider from '@/components/PaddleProvider';
 import Layout from '@/components/Layout';
 import Landing from '@/pages/Landing';
+import Pricing from '@/pages/Pricing';
 import Terms from '@/pages/Terms';
 import Privacy from '@/pages/Privacy';
 import RefundPolicy from '@/pages/RefundPolicy';
