@@ -54,7 +54,7 @@ export default function Upgrade() {
         customerEmail: user?.email,
         successUrl: SUCCESS_URL,
         customData: {
-          user_id: user?.id || '',
+          user_id: user?.uid || '',
           plan: plan.id,
           billing_cycle: cycle
         }

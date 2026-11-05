@@ -38,7 +38,7 @@ export default function PaddleProvider({ children }) {
         const clientToken = import.meta.env.VITE_PADDLE_CLIENT_TOKEN;
         const environment = import.meta.env.VITE_PADDLE_ENV || 'sandbox';
         if (!clientToken) {
-          if (active) setError('Paddle Sandbox client-side token is missing from the environment.');
+          if (active) setError('Paddle client-side token is missing from the environment.');
           return;
         }
         const tokenPrefix = typeof clientToken === 'string' ? clientToken.slice(0, 5) : '';
@@ -94,7 +94,7 @@ export default function PaddleProvider({ children }) {
         items,
         customer: customerEmail ? { email: customerEmail } : undefined,
         settings: successUrl ? { successUrl } : undefined,
-        ...(customData ? { custom_data: customData } : {})
+        ...(customData ? { customData } : {})
       });
     } catch (err) {
       console.error('[Paddle] Checkout.open threw', err);
