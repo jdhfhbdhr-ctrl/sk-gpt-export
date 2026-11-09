@@ -1,0 +1,27 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    match /users/{uid}/conversations/{conversationId} {
+      allow read, create, update, delete:
+        if request.auth != null && request.auth.uid == uid;
+
+      match /messages/{messageId} {
+        allow read, create, update, delete:
+          if request.auth != null && request.auth.uid == uid;
+      }
+    }
+
+    match /users/{uid}/usage/{date} {
+      allow read: if request.auth != null && request.auth.uid == uid;
+      allow write: if false;
+    }
+
+    match /publicShares/{shareId} {
+      allow read, write: if false;
+      match /messages/{messageId} {
+        allow read, write: if false;
+      }
+    }
+  }
+}

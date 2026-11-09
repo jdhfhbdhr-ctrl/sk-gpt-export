@@ -1,26 +1,41 @@
-import { base44 } from '@/api/base44Client';
+import { auth } from "@/lib/firebase";
 
-export const isImageRequest = (text) => /\b(generate|create|make|draw|paint|design)\s+(?:(?:me|us)\s+)?(?:(?:an?|the|some)\s+)?(?:(?:ai|realistic|photorealistic|beautiful|detailed)[ -]){0,3}(?:image|photo|picture|drawing|painting|illustration)\b/i.test(text) || /^(?:please\s+)?(?:draw|paint)\s+\S/i.test(text);
-export default async function requestReply({ text, userContent, pendingFile, photoMode, messages, language, thinkHarder }) {
-  if (photoMode || isImageRequest(text)) {
-    const prompt = text || pendingFile?.name || 'a beautiful image';
-    const response = await base44.functions.invoke('generatePhoto', { prompt });
-    if (!response.data?.url || !/^https:\/\//.test(response.data.url)) throw new Error(response.data?.error || 'Image generation returned no usable image URL.');
-    return { content: `Here's the image I created for: "${prompt}"`, image_url: response.data.url };
+export const isImageRequest = (text = "") =>
+  /\\b(generate|create|draw|make)\\b.{0,35}\\b(image|picture|photo|art|logo)\\b/i.test(text);
+
+export default async function requestReply({
+  text, userContent, pendingFile, photoMode, messages, language, thinkHarder
+}) {
+  const user = auth.currentUser;
+  if (!user) throw new Error("Please sign in again.");
+
+  const token = await user.getIdToken();
+  const form = new FormData();
+  form.append("text", text || userContent || "");
+  form.append("language", language || "en");
+  form.append("thinkHarder", String(!!thinkHarder));
+  form.append("photoMode", String(!!photoMode));
+  form.append("messages", JSON.stringify(messages || []));
+  if (pendingFile?.file) form.append("file", pendingFile.file);
+
+  const endpoint = photoMode || isImageRequest(text)
+    ? "/api/images/generate"
+    : pendingFile?.type === "application/pdf"
+      ? "/api/pdf/analyze"
+      : "/api/chat";
+
+  const response = await fetch(endpoint, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+    body: form
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.error || `Request failed (${response.status})`);
+
+  if (endpoint === "/api/images/generate") {
+    if (!data.image_url) throw new Error("Image generation returned no image.");
+    return { content: data.content || "Your image is ready.", image_url: data.image_url };
   }
-  let content = userContent;
-  const fileUrls = [];
-  if (pendingFile?.uri) {
-    const { signed_url } = await base44.integrations.Core.CreateFileSignedUrl({ file_uri: pendingFile.uri });
-    if (pendingFile.type === 'application/pdf') {
-      const pdf = await base44.functions.invoke('processPdf', { fileUrl: signed_url });
-      const output = pdf.data?.data?.output || {};
-      if (!output.content && !output.summary) throw new Error(pdf.data?.error || 'Could not extract the PDF content.');
-      content += `\n\nPDF "${pendingFile.name}":\n${output.summary || ''}\n${output.content || ''}`;
-    } else fileUrls.push(signed_url);
-  }
-  const history = [...messages, { role: 'user', content }].map((message) => ({ role: message.role, content: message.content }));
-  const response = await base44.functions.invoke('chatWithAI', { messages: history, language, fileUrls, thinkHarder });
-  if (!response.data?.reply) throw new Error(response.data?.error || 'The AI returned no response.');
-  return { content: response.data.reply, image_url: '' };
+  return { content: data.reply || data.content || "No response was returned.", image_url: "" };
 }

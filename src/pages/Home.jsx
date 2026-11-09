@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { base44 } from '@/api/base44Client';
+import { listConversations, createConversation, updateConversation, deleteConversation, listMessages, saveMessage, clearMessages } from '@/lib/chatStore';
+import { auth } from '@/lib/firebase';
 import { useAuth } from '@/lib/AuthContext';
 import requestReply from '@/components/chat/requestReply';
 import ChatMessage from '@/components/ChatMessage';
@@ -52,28 +53,27 @@ export default function Home() {
 
   const voice = useSpeechRecognition();
 
-  const loadConversations = useCallback(async (cursor) => {
-    if (!user?.id) return;
+  const loadConversations = useCallback(async () => {
+    if (!user?.uid) return;
     setLoadingConvs(true);
     try {
-      const page = await base44.entities.Conversation.filter({ created_by_id: user.id }, { sort: '-updated_date', limit: 50, ...(cursor ? { cursor } : {}) });
-      setConversations((previous) => cursor ? [...previous, ...page.items] : page.items);
-      setConvCursor(page.next_cursor); setMoreConvs(page.has_more);
+      const list = await listConversations(50);
+      setConversations(list);
+      setConvCursor(null); setMoreConvs(false);
     } catch (error) { setChatError(error.message || 'Could not load conversations.'); }
     finally { setLoadingConvs(false); }
-  }, [user?.id]);
+  }, [user?.uid]);
 
   useEffect(() => { loadConversations(); }, [loadConversations]);
 
-  const loadMessages = useCallback(async (convId, cursor) => {
+  const loadMessages = useCallback(async (convId) => {
     if (!convId) { setMessages([]); return; }
     setLoadingMessages(true);
     try {
-      const page = await base44.entities.Message.filter({ conversation_id: convId }, { sort: '-created_date', limit: 50, ...(cursor ? { cursor } : {}) });
+      const list = await listMessages(convId, 1000);
       if (selectionRef.current !== convId) return;
-      const ordered = [...page.items].reverse();
-      setMessages((previous) => cursor ? [...ordered, ...previous] : ordered);
-      setMessageCursor(page.next_cursor); setMoreMessages(page.has_more);
+      setMessages(list);
+      setMessageCursor(null); setMoreMessages(false);
     } catch (error) { setChatError(error.message || 'Could not load messages.'); }
     finally { setLoadingMessages(false); }
   }, []);
@@ -121,34 +121,60 @@ export default function Home() {
 
   const activeConversation = conversations.find((c) => c.id === activeId) || null;
 
-  const shareUrl = activeId
-    ? `${window.location.origin}/share/${activeId}`
-    : '';
+  const createShareLink = async () => {
+    if (!activeId || !auth.currentUser) {
+      throw new Error('Please sign in and open a conversation first.');
+    }
+
+    const token = await auth.currentUser.getIdToken();
+    const response = await fetch(`/api/share/${encodeURIComponent(activeId)}`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` }
+    });
+
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(data.error || 'Could not create a share link.');
+    }
+
+    const publicUrl = data.shareUrl || `${window.location.origin}/share/${data.shareId}`;
+
+    await updateConversation(activeId, {
+      shared: true,
+      shareId: data.shareId
+    });
+
+    setShared(true);
+    setConversations((cs) => cs.map((c) =>
+      c.id === activeId
+        ? { ...c, shared: true, shareId: data.shareId }
+        : c
+    ));
+
+    return publicUrl;
+  };
 
   const handleShareConversation = async () => {
     if (!activeId || !activeConversation) {
       alert('Start or open a conversation first, then share it.');
       return;
     }
+
     try {
-      if (!activeConversation.shared) {
-        await base44.entities.Conversation.update(activeId, { shared: true });
-        setShared(true);
-        setConversations((cs) => cs.map((c) => (c.id === activeId ? { ...c, shared: true } : c)));
+      const publicUrl = await createShareLink();
+      const text = buildConversationText(activeConversation, messages);
+      const result = await nativeShare({
+        title: activeConversation.title || 'SK GPT conversation',
+        text,
+        url: publicUrl
+      });
+
+      if (result === 'unsupported') {
+        const ok = await copyText(`${text}\\n\\n${publicUrl}`);
+        alert(ok ? 'Conversation + public link copied!' : 'Sharing not supported on this browser.');
       }
-    } catch (_e) {
-      alert('Could not make the conversation shareable.');
-      return;
-    }
-    const text = buildConversationText(activeConversation, messages);
-    const res = await nativeShare({
-      title: activeConversation.title || 'SK GPT conversation',
-      text,
-      url: shareUrl
-    });
-    if (res === 'unsupported') {
-      const ok = await copyText(`${text}\n\n${shareUrl}`);
-      alert(ok ? 'Conversation + link copied!' : 'Sharing not supported on this browser.');
+    } catch (error) {
+      alert(error.message || 'Could not share this conversation.');
     }
   };
 
@@ -170,27 +196,26 @@ export default function Home() {
 
   const handleCopyShareLink = async () => {
     if (!activeId) return;
-    if (!activeConversation?.shared) {
-      try {
-        await base44.entities.Conversation.update(activeId, { shared: true });
-        setShared(true);
-        setConversations((cs) => cs.map((c) => (c.id === activeId ? { ...c, shared: true } : c)));
-      } catch (_e) {
-        alert('Could not create a share link.');
-        return;
+
+    try {
+      const publicUrl = await createShareLink();
+      const ok = await copyText(publicUrl);
+
+      if (ok) {
+        setShareLinkCopied(true);
+        setTimeout(() => setShareLinkCopied(false), 1800);
+      } else {
+        setChatError('Could not copy the share link.');
       }
-    }
-    const ok = await copyText(shareUrl);
-    if (ok) {
-      setShareLinkCopied(true);
-      setTimeout(() => setShareLinkCopied(false), 1800);
+    } catch (error) {
+      alert(error.message || 'Could not create a share link.');
     }
   };
 
   const handleClearConversation = () => {
     if (sendingRef.current || !activeId || messages.length === 0) return;
     if (!confirm('Clear all messages in this conversation? This cannot be undone.')) return;
-    base44.entities.Message.deleteMany({ conversation_id: activeId })
+    clearMessages(activeId)
       .then(() => { setMessages([]); })
       .catch(() => { /* ignore */ });
   };
@@ -199,8 +224,7 @@ export default function Home() {
     e.stopPropagation();
     if (sendingRef.current) return;
     try {
-      await base44.entities.Message.deleteMany({ conversation_id: conv.id });
-      await base44.entities.Conversation.delete(conv.id);
+      await deleteConversation(conv.id);
       if (activeId === conv.id) startNewChat();
       loadConversations();
     } catch (err) { /* ignore */ }
@@ -215,8 +239,7 @@ export default function Home() {
       return;
     }
     try {
-      const { file_uri } = await base44.integrations.Core.UploadPrivateFile({ file });
-      setAttachedFile({ name: file.name, uri: file_uri, type: file.type });
+      setAttachedFile({ name: file.name, type: file.type, file });
       setPhotoMode(false);
     } catch (err) {
       alert('Could not upload the file.');
@@ -227,10 +250,16 @@ export default function Home() {
     if (!attachedFile || attachedFile.type !== 'application/pdf' || converting) return;
     setConverting(true);
     try {
-      const { signed_url } = await base44.integrations.Core.CreateFileSignedUrl({ file_uri: attachedFile.uri });
-      const pdfRes = await base44.functions.invoke('processPdf', { fileUrl: signed_url });
-      const out = pdfRes.data?.data?.output || {};
-      const text = out.content || out.summary || '';
+      const token = await auth.currentUser.getIdToken();
+      const form = new FormData();
+      form.append('file', attachedFile.file);
+      form.append('action', 'extract_text');
+      const response = await fetch('/api/pdf/analyze', {
+        method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: form
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'PDF conversion failed');
+      const text = result.text || result.content || '';
       if (!text) { alert('Could not extract text from this PDF.'); return; }
       const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
       const url = URL.createObjectURL(blob);
@@ -276,19 +305,20 @@ export default function Home() {
     let completed = false;
     try {
       if (!convId) {
-        const conv = await base44.entities.Conversation.create({ title: (text || pendingFile?.name || 'New chat').slice(0, 40), type: chatType, language });
+        const conv = await createConversation({ title: (text || pendingFile?.name || 'New chat').slice(0, 40), type: chatType, language });
         convId = conv.id; selectionRef.current = convId;
         setActiveId(convId); setShared(false);
         setConversations((previous) => [conv, ...previous]);
       }
-      const saved = await base44.entities.Message.create({ conversation_id: convId, role: 'user', content: userContent, file_name: pendingFile?.name || '', file_uri: pendingFile?.uri || '' });
+      const saved = await saveMessage(convId, { role: 'user', content: userContent, file_name: pendingFile?.name || '' });
       persisted = true;
       setMessages((previous) => [...previous, saved]);
       setInput(''); setAttachedFile(null); setPhotoMode(false);
       const reply = await requestReply({ text, userContent, pendingFile, photoMode: wasPhotoMode, messages: history, language, thinkHarder });
-      const savedReply = await base44.entities.Message.create({ conversation_id: convId, role: 'assistant', ...reply });
+      const savedReply = await saveMessage(convId, { role: 'assistant', ...reply });
       setMessages((previous) => [...previous, savedReply]); completed = true;
-      const updated = await base44.entities.Conversation.update(convId, { last_message_at: new Date().toISOString() });
+      await updateConversation(convId, { last_message_at: new Date().toISOString() });
+      const updated = { ...conversations.find(c => c.id === convId), id: convId, updatedAt: new Date().toISOString() };
       setConversations((previous) => [updated, ...previous.filter((conversation) => conversation.id !== convId)]);
     } catch (error) {
       const reason = error.response?.data?.error || error.data?.error || error.message || 'Unknown request failure';
