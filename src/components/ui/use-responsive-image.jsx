@@ -11,14 +11,7 @@ export function useResponsiveImage({ parsed, fittingType, focalPoint, quality, c
 
   React.useImperativeHandle(parentRef, () => imgRef.current)
   React.useEffect(() => setLoaded(false), [parsed.baseUrl])
-  React.useEffect(() => {
-    const wrapper = wrapperRef.current
-    const replace = (event) => onSourceChange(
-      event.detail.src, getImagePreviewClassName(className, wrapper.className, cn("inline-block relative", className))
-    )
-    wrapper.addEventListener("base44:image-replace", replace)
-    return () => wrapper.removeEventListener("base44:image-replace", replace)
-  }, [className, onSourceChange])
+
 
   const crop = fittingType !== "fit"
   // Wait for useSize's pre-paint measurement before requesting a transform.
