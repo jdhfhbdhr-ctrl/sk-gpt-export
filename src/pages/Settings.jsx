@@ -7,7 +7,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 export default function Settings() {
   const { user } = useAuth();
   const [language, setLanguage] = useState('en');
-  const [theme, setTheme] = useState('light');
+  const [theme, setTheme] = useState(() => {
+    try {
+      return localStorage.getItem('sk-gpt-theme') || 'system';
+    } catch {
+      return 'system';
+    }
+  });
   const [values, setValues] = useState({});
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('All');
@@ -20,7 +26,6 @@ export default function Settings() {
 
   useEffect(() => {
     setLanguage(localStorage.getItem('sk-gpt-language') || 'en');
-    setTheme(localStorage.getItem('sk-gpt-theme') || 'light');
 
     try {
       setValues(JSON.parse(localStorage.getItem('sk-gpt-settings') || '{}'));
@@ -28,6 +33,24 @@ export default function Settings() {
       setValues({});
     }
   }, []);
+
+  useEffect(() => {
+    const applyTheme = () => {
+      const dark = theme === 'dark' ||
+        (theme === 'system' &&
+          window.matchMedia('(prefers-color-scheme: dark)').matches);
+
+      document.documentElement.classList.toggle('dark', dark);
+      document.documentElement.style.colorScheme = dark ? 'dark' : 'light';
+    };
+
+    applyTheme();
+
+    const media = window.matchMedia('(prefers-color-scheme: dark)');
+    media.addEventListener?.('change', applyTheme);
+
+    return () => media.removeEventListener?.('change', applyTheme);
+  }, [theme]);
 
   const updateSetting = (id, checked) => {
     setValues(previous => {
@@ -42,10 +65,6 @@ export default function Settings() {
     localStorage.setItem('sk-gpt-theme', theme);
     localStorage.setItem('sk-gpt-settings', JSON.stringify(values));
 
-    const dark = theme === 'dark' ||
-      (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
-
-    document.documentElement.classList.toggle('dark', dark);
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };

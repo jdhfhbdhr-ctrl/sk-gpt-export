@@ -4,7 +4,9 @@ import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import multer from "multer";
 import OpenAI, { toFile } from "openai";
-import admin from "firebase-admin";
+import { getApps, initializeApp, cert } from "firebase-admin/app";
+import { getFirestore, FieldValue } from "firebase-admin/firestore";
+import { getAuth } from "firebase-admin/auth";
 import crypto from "node:crypto";
 
 const app = express();
@@ -28,10 +30,10 @@ function initializeServices() {
   if (!process.env.FIREBASE_SERVICE_ACCOUNT_JSON) throw new Error("FIREBASE_SERVICE_ACCOUNT_JSON is missing.");
 
   const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
-  if (!admin.apps.length) {
-    admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
+  if (!getApps().length) {
+    initializeApp({ credential: cert(serviceAccount) });
   }
-  db = admin.firestore();
+  db = getFirestore();
   openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 }
 
@@ -40,7 +42,7 @@ async function requireAuth(req, res, next) {
     const header = req.headers.authorization || "";
     const token = header.startsWith("Bearer ") ? header.slice(7) : "";
     if (!token) return res.status(401).json({ error: "Please sign in first." });
-    req.user = await admin.auth().verifyIdToken(token);
+    req.user = await getAuth().verifyIdToken(token);
     next();
   } catch {
     res.status(401).json({ error: "Your session is invalid. Please sign in again." });
@@ -74,7 +76,7 @@ async function consumeQuota(uid, type) {
     tx.set(ref, {
       [type]: used + 1,
       date,
-      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      updatedAt: FieldValue.serverTimestamp()
     }, { merge: true });
   });
 }
@@ -236,7 +238,7 @@ app.post("/api/share/:conversationId", requireAuth, async (req, res) => {
 
     await shareRef.set({
       title: conversation.title || "Shared conversation",
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      createdAt: FieldValue.serverTimestamp(),
       ownerUid: uid
     });
 

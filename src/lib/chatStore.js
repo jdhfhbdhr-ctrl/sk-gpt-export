@@ -67,6 +67,14 @@ export async function saveMessage(conversationId, data) {
   return { id: created.id, ...data };
 }
 
+export async function deleteMessagesFrom(conversationId, startIndex) {
+  const uid = userPath();
+  const ref = collection(db, "users", uid, "conversations", conversationId, "messages");
+  const snap = await getDocs(query(ref, orderBy("createdAt", "asc")));
+  const targets = snap.docs.slice(Math.max(0, startIndex));
+  await Promise.all(targets.map(item => deleteDoc(item.ref)));
+}
+
 export async function clearMessages(conversationId) {
   const uid = userPath();
   const ref = collection(db, "users", uid, "conversations", conversationId, "messages");

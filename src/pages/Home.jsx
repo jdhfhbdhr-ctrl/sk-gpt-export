@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { listConversations, createConversation, updateConversation, deleteConversation, listMessages, saveMessage, clearMessages } from '@/lib/chatStore';
+import { listConversations, createConversation, updateConversation, deleteConversation, listMessages, saveMessage, clearMessages, deleteMessagesFrom } from '@/lib/chatStore';
 import { auth } from '@/lib/firebase';
 import { useAuth } from '@/lib/AuthContext';
 import requestReply from '@/components/chat/requestReply';
@@ -8,7 +8,7 @@ import PlusToolsSheet from '@/components/PlusToolsSheet';
 import { useSpeechRecognition } from '@/hooks/useSpeechRecognition';
 import { LANGUAGES, RECOGNITION_LANG } from '@/lib/languages';
 import { Button } from '@/components/ui/button';
-import { Send, Plus, Mic, Sparkles, Clock, Trash2, FileText, Brain, Globe, X, Share2, Copy, Download, Eraser, Check, Link2 } from 'lucide-react';
+import { Send, StopCircle, Plus, Mic, Sparkles, Clock, Trash2, FileText, Brain, Globe, X, Share2, Copy, Download, Eraser, Check, Link2 } from 'lucide-react';
 import { buildConversationText, copyText, downloadTextFile, nativeShare, safeFilename, SK_GPT_NAME, SK_GPT_TAGLINE } from '@/lib/shareUtils';
 
 const langLabel = (code) => (LANGUAGES.find((l) => l.code === code) || {}).label || 'English';
@@ -42,6 +42,7 @@ export default function Home() {
   const voiceBaseRef = useRef('');
   const voiceCaptureRef = useRef(false);
   const sendingRef = useRef(false);
+  const abortControllerRef = useRef(null);
   const [chatError, setChatError] = useState('');
   const [messageCursor, setMessageCursor] = useState(null);
   const [moreMessages, setMoreMessages] = useState(false);
@@ -290,11 +291,14 @@ export default function Home() {
     voice.start(RECOGNITION_LANG[language] || 'en-US');
   };
 
+  const stopGeneration = () => abortControllerRef.current?.abort();
+
   const send = async () => {
     if (sendingRef.current || loadingMessages) return;
     const text = input.trim();
     if (!text && !attachedFile) return;
     sendingRef.current = true; setLoading(true); setChatError('');
+  abortControllerRef.current = new AbortController();
     voiceCaptureRef.current = false; voice.stop();
     const pendingFile = attachedFile;
     const wasPhotoMode = photoMode;
@@ -314,16 +318,85 @@ export default function Home() {
       persisted = true;
       setMessages((previous) => [...previous, saved]);
       setInput(''); setAttachedFile(null); setPhotoMode(false);
-      const reply = await requestReply({ text, userContent, pendingFile, photoMode: wasPhotoMode, messages: history, language, thinkHarder });
+      const reply = await requestReply({ text, userContent, pendingFile, photoMode: wasPhotoMode, messages: history, language, thinkHarder, signal: abortControllerRef.current?.signal });
       const savedReply = await saveMessage(convId, { role: 'assistant', ...reply });
       setMessages((previous) => [...previous, savedReply]); completed = true;
       await updateConversation(convId, { last_message_at: new Date().toISOString() });
       const updated = { ...conversations.find(c => c.id === convId), id: convId, updatedAt: new Date().toISOString() };
       setConversations((previous) => [updated, ...previous.filter((conversation) => conversation.id !== convId)]);
     } catch (error) {
+      if (error.name === 'AbortError') {
+        setChatError('Generation stopped. You can send another message.');
+        return;
+      }
       const reason = error.response?.data?.error || error.data?.error || error.message || 'Unknown request failure';
       setChatError(`${completed ? 'Your response was saved, but the conversation timestamp could not be updated.' : persisted ? 'Your message was saved, but the response did not finish.' : 'Your message could not be saved.'} ${reason}`);
-    } finally { sendingRef.current = false; setLoading(false); }
+    } finally { abortControllerRef.current = null; sendingRef.current = false; setLoading(false); }
+  };
+
+  const regenerateMessage = async (assistantIndex) => {
+    if (sendingRef.current || loadingMessages || !activeId) return;
+
+    const assistant = messages[assistantIndex];
+    if (!assistant || assistant.role !== 'assistant') return;
+
+    let userIndex = assistantIndex - 1;
+    while (userIndex >= 0 && messages[userIndex].role !== 'user') userIndex--;
+
+    if (userIndex < 0) {
+      setChatError('The original user message could not be found.');
+      return;
+    }
+
+    const originalUser = messages[userIndex];
+    if (originalUser.file_name) {
+      setChatError('Regenerating file-based answers requires attaching the original file again.');
+      return;
+    }
+
+    sendingRef.current = true;
+    setLoading(true);
+    setChatError('');
+    abortControllerRef.current = new AbortController();
+
+    try {
+      const history = messages.slice(0, userIndex);
+      const text = originalUser.content || '';
+
+      await deleteMessagesFrom(activeId, assistantIndex);
+      setMessages(messages.slice(0, assistantIndex));
+
+      const reply = await requestReply({
+        text,
+        userContent: text,
+        pendingFile: null,
+        photoMode: false,
+        messages: history,
+        language,
+        thinkHarder,
+        signal: abortControllerRef.current.signal
+      });
+
+      const savedReply = await saveMessage(activeId, { role: 'assistant', ...reply });
+      setMessages(previous => [...previous, savedReply]);
+      await updateConversation(activeId, { last_message_at: new Date().toISOString() });
+    } catch (error) {
+      if (error.name === 'AbortError') {
+        setChatError('Regeneration stopped.');
+      } else {
+        setChatError(error.message || 'Could not regenerate this response.');
+      }
+    } finally {
+      abortControllerRef.current = null;
+      sendingRef.current = false;
+      setLoading(false);
+    }
+  };
+
+  const editMessage = (message) => {
+    if (loading || !message || message.role !== 'user') return;
+    setInput(message.content || '');
+    setChatError('Edit your message in the composer, then press Send.');
   };
 
   const onKeyDown = (e) => {
@@ -427,7 +500,7 @@ export default function Home() {
                 <p className="mt-2 text-sm text-muted-foreground">Ask anything, generate images, or attach a PDF — in 20+ languages.</p>
               </div>
             )}
-            {messages.map((m, i) => <ChatMessage key={m.id || i} message={m} />)}
+            {messages.map((m, i) => <ChatMessage key={m.id || i} message={m} onEdit={editMessage} onRegenerate={() => regenerateMessage(i)} />)}
             {loading && (
               <div className="flex gap-3">
                 <div className="mt-0.5 flex h-8 w-8 items-center justify-center rounded-full bg-muted"><Sparkles size={16} /></div>
@@ -512,9 +585,15 @@ export default function Home() {
               >
                 <Mic size={18} />
               </Button>
-              <Button onClick={send} aria-label="Send message" disabled={loading || loadingMessages || (!input.trim() && !attachedFile)} size="icon">
-                <Send size={18} />
-              </Button>
+              {loading ? (
+                <Button onClick={stopGeneration} aria-label="Stop generation" title="Stop generation" size="icon" variant="destructive">
+                  <StopCircle size={18} />
+                </Button>
+              ) : (
+                <Button onClick={send} aria-label="Send message" disabled={loadingMessages || (!input.trim() && !attachedFile)} size="icon">
+                  <Send size={18} />
+                </Button>
+              )}
             </div>
             <p className="mt-1.5 text-center text-[11px] text-muted-foreground">SK GPT can make mistakes. Check important info.</p>
           </div>

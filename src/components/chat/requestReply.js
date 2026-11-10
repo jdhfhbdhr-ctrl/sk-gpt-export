@@ -1,10 +1,10 @@
 import { auth } from "@/lib/firebase";
 
 export const isImageRequest = (text = "") =>
-  /\\b(generate|create|draw|make)\\b.{0,35}\\b(image|picture|photo|art|logo)\\b/i.test(text);
+  /\b(generate|create|draw|make)\b.{0,35}\b(image|picture|photo|art|logo)\b/i.test(text);
 
 export default async function requestReply({
-  text, userContent, pendingFile, photoMode, messages, language, thinkHarder
+  text, userContent, pendingFile, photoMode, messages, language, thinkHarder, signal
 }) {
   const user = auth.currentUser;
   if (!user) throw new Error("Please sign in again.");
@@ -27,7 +27,8 @@ export default async function requestReply({
   const response = await fetch(endpoint, {
     method: "POST",
     headers: { Authorization: `Bearer ${token}` },
-    body: form
+    body: form,
+    signal
   });
 
   const data = await response.json().catch(() => ({}));

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import ChatImage from '@/components/ChatImage';
 import CopyResponseButton from '@/components/CopyResponseButton';
 import ReadAloud from '@/components/ReadAloud';
-import { User, Sparkles, FileText, Check, Download, Share2, Link2 } from 'lucide-react';
+import { User, Sparkles, FileText, Check, Download, Share2, Link2, MoreHorizontal, Pencil, RotateCcw } from 'lucide-react';
 import MarkdownText from '@/components/MarkdownText';
 import {
   copyText,
@@ -12,7 +12,7 @@ import {
 
 // One chat bubble. User messages stay plain text; AI messages render markdown.
 // Each AI message has copy + listen; image messages add download/share/copy-link.
-function ChatMessage({ message }) {
+function ChatMessage({ message, onEdit, onRegenerate }) {
   const isUser = message.role === 'user';
   const [imgCopied, setImgCopied] = useState(false);
 
@@ -74,35 +74,51 @@ function ChatMessage({ message }) {
           )}
         </div>
 
-        {/* Per-message actions */}
-        {!isUser && (
-          <div className="flex flex-wrap items-center gap-1">
-            <ReadAloud text={message.content} />
-            <CopyResponseButton text={message.content} />
-            {message.image_url && (
-              <>
-                <button onClick={handleDownloadImage} className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs text-muted-foreground hover:bg-accent">
-                  <Download size={13} /> Save
+        {/* Message actions and three-dot menu */}
+        <div className="flex items-center gap-1">
+          {!isUser && <ReadAloud text={message.content} />}
+          {message.content && <CopyResponseButton text={message.content} />}
+          <details className="relative">
+            <summary
+              aria-label="More message actions"
+              title="More actions"
+              className="flex h-8 w-8 cursor-pointer list-none items-center justify-center rounded-lg text-muted-foreground hover:bg-accent"
+            >
+              <MoreHorizontal size={18} />
+            </summary>
+            <div className="absolute left-0 top-9 z-50 min-w-44 rounded-xl border bg-popover p-1 text-popover-foreground shadow-lg">
+              {isUser && (
+                <button onClick={() => onEdit?.(message)} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm hover:bg-accent">
+                  <Pencil size={14} /> Edit & resend
                 </button>
-                <button onClick={handleShareImage} className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs text-muted-foreground hover:bg-accent">
-                  <Share2 size={13} /> Share
+              )}
+              {!isUser && (
+                <button onClick={onRegenerate} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm hover:bg-accent">
+                  <RotateCcw size={14} /> Regenerate
                 </button>
-                <button onClick={handleCopyImageLink} className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs text-muted-foreground hover:bg-accent">
-                  {imgCopied ? <Check size={13} /> : <Link2 size={13} />}
-                  {imgCopied ? 'Copied' : 'Link'}
+              )}
+              {message.content && (
+                <button onClick={handleShareMessage} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm hover:bg-accent">
+                  <Share2 size={14} /> Share message
                 </button>
-              </>
-            )}
-            <button onClick={handleShareMessage} className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs text-muted-foreground hover:bg-accent">
-              <Share2 size={13} /> Share msg
-            </button>
-          </div>
-        )}
-        {isUser && message.content && (
-          <div className="flex justify-end">
-            <CopyResponseButton text={message.content} />
-          </div>
-        )}
+              )}
+              {message.image_url && (
+                <>
+                  <button onClick={handleDownloadImage} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm hover:bg-accent">
+                    <Download size={14} /> Save image
+                  </button>
+                  <button onClick={handleShareImage} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm hover:bg-accent">
+                    <Share2 size={14} /> Share image
+                  </button>
+                  <button onClick={handleCopyImageLink} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm hover:bg-accent">
+                    {imgCopied ? <Check size={14} /> : <Link2 size={14} />}
+                    {imgCopied ? 'Copied link' : 'Copy image link'}
+                  </button>
+                </>
+              )}
+            </div>
+          </details>
+        </div>
       </div>
     </div>
   );
