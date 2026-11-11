@@ -1,3 +1,4 @@
+import { apiUrl } from "@/lib/apiBase";
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Image } from '@/components/ui/image';
@@ -18,7 +19,7 @@ export default function ShareConversation() {
     let active = true;
     (async () => {
       try {
-        const response = await fetch(`/api/share/${encodeURIComponent(conversationId)}`);
+        const response = await fetch(apiUrl(`/api/share/${encodeURIComponent(conversationId)}`));
         const data = await response.json();
         if (!response.ok) throw new Error(data.error || 'Shared conversation not found.');
         if (active) { setConversation(data.conversation); setMessages(data.messages || []); }

@@ -13,6 +13,21 @@ const app = express();
 const PORT = Number(process.env.PORT || 3001);
 const MAX_FILE = 25 * 1024 * 1024;
 
+const allowedOrigins = (process.env.CORS_ORIGIN || "https://sk-gpt-export.pages.dev")
+  .split(",").map((origin) => origin.trim()).filter(Boolean);
+
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (origin && allowedOrigins.includes(origin)) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+    res.setHeader("Vary", "Origin");
+    res.setHeader("Access-Control-Allow-Headers", "Authorization, Content-Type");
+    res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  }
+  if (req.method === "OPTIONS") return res.sendStatus(204);
+  next();
+});
+
 app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
 app.use(express.json({ limit: "2mb" }));
 app.use("/api", rateLimit({ windowMs: 60_000, limit: 60 }));
@@ -104,7 +119,12 @@ function parseMessages(value) {
 }
 
 app.get("/api/health", (_req, res) => {
-  res.json({ status: "ok", app: "SK GPT" });
+  const ready = Boolean(db && openai);
+  res.status(ready ? 200 : 503).json({
+    status: ready ? "ok" : "not_ready",
+    ready,
+    app: "SK GPT"
+  });
 });
 
 // AI chat
@@ -289,11 +309,12 @@ app.get("/api/share/:shareId", async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
-  try {
-    initializeServices();
+try {
+  initializeServices();
+  app.listen(PORT, "0.0.0.0", () => {
     console.log(`SK GPT API running on port ${PORT}`);
-  } catch (error) {
-    console.error("Backend configuration error:", error.message);
-  }
-});
+  });
+} catch (error) {
+  console.error("Backend startup failed:", error.message);
+  process.exit(1);
+}

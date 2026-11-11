@@ -1,3 +1,4 @@
+import { apiUrl } from "@/lib/apiBase";
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { listConversations, createConversation, updateConversation, deleteConversation, listMessages, saveMessage, clearMessages, deleteMessagesFrom } from '@/lib/chatStore';
 import { auth } from '@/lib/firebase';
@@ -128,7 +129,7 @@ export default function Home() {
     }
 
     const token = await auth.currentUser.getIdToken();
-    const response = await fetch(`/api/share/${encodeURIComponent(activeId)}`, {
+    const response = await fetch(apiUrl(`/api/share/${encodeURIComponent(activeId)}`), {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}` }
     });
@@ -255,7 +256,7 @@ export default function Home() {
       const form = new FormData();
       form.append('file', attachedFile.file);
       form.append('action', 'extract_text');
-      const response = await fetch('/api/pdf/analyze', {
+      const response = await fetch(apiUrl('/api/pdf/analyze'), {
         method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: form
       });
       const result = await response.json();

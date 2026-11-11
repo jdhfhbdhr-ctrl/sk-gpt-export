@@ -1,3 +1,4 @@
+import { apiUrl } from "@/lib/apiBase";
 import { auth } from "@/lib/firebase";
 
 export const isImageRequest = (text = "") =>
@@ -18,13 +19,13 @@ export default async function requestReply({
   form.append("messages", JSON.stringify(messages || []));
   if (pendingFile?.file) form.append("file", pendingFile.file);
 
-  const endpoint = photoMode || isImageRequest(text)
+  const endpointPath = photoMode || isImageRequest(text)
     ? "/api/images/generate"
     : pendingFile?.type === "application/pdf"
       ? "/api/pdf/analyze"
       : "/api/chat";
 
-  const response = await fetch(endpoint, {
+  const response = await fetch(apiUrl(endpointPath), {
     method: "POST",
     headers: { Authorization: `Bearer ${token}` },
     body: form,
@@ -34,7 +35,7 @@ export default async function requestReply({
   const data = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(data.error || `Request failed (${response.status})`);
 
-  if (endpoint === "/api/images/generate") {
+  if (endpointPath === "/api/images/generate") {
     if (!data.image_url) throw new Error("Image generation returned no image.");
     return { content: data.content || "Your image is ready.", image_url: data.image_url };
   }
