@@ -1,0 +1,6 @@
+
+{
+  "name": "sk-gpt-api",
+  "main": "worker.js",
+  "compatibility_date": "2026-11-12"
+}

@@ -36,3 +36,10 @@ dist-ssr
 .vite
 !.env.example
 *.before-*
+
+# SK GPT private credentials and local backups
+*firebase-adminsdk*.json
+worker-before-*.js
+worker-health-backup*.js
+worker-image-fix-*.js
+wrangler-health-backup*.jsonc
