@@ -14,6 +14,24 @@ export default function Settings() {
       return 'system';
     }
   });
+  const ACCENTS = [
+    { name: 'Violet', value: '263 84% 58%' },
+    { name: 'Blue', value: '221 83% 53%' },
+    { name: 'Sky', value: '199 89% 48%' },
+    { name: 'Teal', value: '173 80% 35%' },
+    { name: 'Emerald', value: '152 65% 38%' },
+    { name: 'Green', value: '142 71% 35%' },
+    { name: 'Rose', value: '343 78% 52%' },
+    { name: 'Red', value: '0 75% 50%' },
+    { name: 'Orange', value: '25 90% 48%' },
+    { name: 'Amber', value: '38 92% 45%' },
+  ];
+
+  const [accent, setAccent] = useState(() => {
+    try { return localStorage.getItem('sk-gpt-accent') || '263 84% 58%'; }
+    catch { return '263 84% 58%'; }
+  });
+
   const [values, setValues] = useState({});
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('All');
@@ -52,6 +70,14 @@ export default function Settings() {
     return () => media.removeEventListener?.('change', applyTheme);
   }, [theme]);
 
+  useEffect(() => {
+    const root = document.documentElement;
+    root.style.setProperty('--primary', accent);
+    root.style.setProperty('--ring', accent);
+    root.style.setProperty('--sidebar-primary', accent);
+    try { localStorage.setItem('sk-gpt-accent', accent); } catch {}
+  }, [accent]);
+
   const updateSetting = (id, checked) => {
     setValues(previous => {
       const next = { ...previous, [id]: checked };
@@ -63,6 +89,7 @@ export default function Settings() {
   const save = () => {
     localStorage.setItem('sk-gpt-language', language);
     localStorage.setItem('sk-gpt-theme', theme);
+    localStorage.setItem('sk-gpt-accent', accent);
     localStorage.setItem('sk-gpt-settings', JSON.stringify(values));
 
     setSaved(true);
@@ -99,6 +126,31 @@ export default function Settings() {
             <div className="flex justify-between">
               <span className="text-muted-foreground">Role</span>
               <span>user</span>
+            </div>
+
+            <div>
+              <label className="mb-3 block text-sm font-medium">Accent colour</label>
+              <div className="grid grid-cols-5 gap-3">
+                {ACCENTS.map(color => (
+                  <button
+                    key={color.name}
+                    type="button"
+                    onClick={() => setAccent(color.value)}
+                    aria-label={`${color.name} accent colour`}
+                    aria-pressed={accent === color.value}
+                    title={color.name}
+                    className={`flex flex-col items-center gap-1.5 rounded-xl border p-2 transition ${
+                      accent === color.value ? 'border-primary bg-primary/10' : 'border-transparent hover:bg-accent'
+                    }`}
+                  >
+                    <span
+                      className="h-8 w-8 rounded-full shadow-sm"
+                      style={{ backgroundColor: `hsl(${color.value})` }}
+                    />
+                    <span className="text-[11px] text-muted-foreground">{color.name}</span>
+                  </button>
+                ))}
+              </div>
             </div>
           </CardContent>
         </Card>

@@ -19,6 +19,7 @@ export default function Layout() {
   const [open, setOpen] = useState(false);
 
   const handleLogout = async () => {
+    if (!window.confirm('Are you sure you want to sign out?')) return;
     try {
       await logout(false);
       navigate('/login');
@@ -52,8 +53,8 @@ export default function Layout() {
             <Sparkles size={18} />
           </div>
           <div className="leading-tight">
-            <p className="font-display text-base font-semibold tracking-tight">SK GPT</p>
-            <p className="text-xs text-muted-foreground">Fast multilingual chat</p>
+            <p className="font-display text-base font-semibold tracking-tight">SK Chat</p>
+            <p className="text-xs text-muted-foreground">Your intelligent assistant</p>
           </div>
         </div>
         <div className="mt-2 flex-1 overflow-y-auto"><NavItems /></div>
@@ -70,7 +71,7 @@ export default function Layout() {
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
               <Sparkles size={16} />
             </div>
-            <span className="font-display font-semibold">SK GPT</span>
+            <span className="font-display font-semibold">SK Chat</span>
           </div>
           <Button variant="ghost" size="icon" onClick={() => setOpen(true)}>
             <Menu size={20} />

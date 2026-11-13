@@ -9,7 +9,7 @@ import PlusToolsSheet from '@/components/PlusToolsSheet';
 import { useSpeechRecognition } from '@/hooks/useSpeechRecognition';
 import { LANGUAGES, RECOGNITION_LANG } from '@/lib/languages';
 import { Button } from '@/components/ui/button';
-import { Send, StopCircle, Plus, Mic, Sparkles, Clock, Trash2, FileText, Brain, Globe, X, Share2, Copy, Download, Eraser, Check, Link2 } from 'lucide-react';
+import { Send, Square, Plus, Mic, Sparkles, Clock, Trash2, FileText, Brain, Globe, X, Share2, Copy, Download, Eraser, Check, Link2 } from 'lucide-react';
 import { buildConversationText, copyText, downloadTextFile, nativeShare, safeFilename, SK_GPT_NAME, SK_GPT_TAGLINE } from '@/lib/shareUtils';
 
 const langLabel = (code) => (LANGUAGES.find((l) => l.code === code) || {}).label || 'English';
@@ -491,16 +491,7 @@ export default function Home() {
           <div className="mx-auto flex w-full max-w-4xl flex-col gap-8">
             {loadingMessages && <p role="status" className="text-sm text-muted-foreground">Loading messages…</p>}
             {moreMessages && <Button variant="outline" onClick={() => loadMessages(activeId, messageCursor)} disabled={loadingMessages || loading}>Load earlier messages</Button>}
-            {messages.length === 0 && !loading && (
-              <div className="mx-auto mt-16 text-center">
-                <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary text-primary-foreground">
-                  <Sparkles size={26} />
-                </div>
-                <h2 className="font-display text-2xl font-semibold tracking-tight">{SK_GPT_NAME}</h2>
-                <p className="mt-1 text-sm font-medium text-foreground">{SK_GPT_TAGLINE}</p>
-                <p className="mt-2 text-sm text-muted-foreground">Ask anything, generate images, or attach a PDF — in 20+ languages.</p>
-              </div>
-            )}
+
             {messages.map((m, i) => <ChatMessage key={m.id || i} message={m} onEdit={editMessage} onRegenerate={() => regenerateMessage(i)} />)}
             {loading && (
               <div className="flex gap-3">
@@ -572,7 +563,7 @@ export default function Home() {
                 onKeyDown={onKeyDown}
                 rows={1}
                 placeholder={photoMode ? 'Describe the image to create…' : voice.listening ? 'Listening…' : 'Type your message…'}
-                aria-label="Message SK GPT"
+                aria-label="Message SK Chat"
                 className="max-h-40 min-w-0 flex-1 resize-none bg-transparent px-1 py-2 text-base outline-none placeholder:text-muted-foreground"
               />
               <Button
@@ -588,7 +579,7 @@ export default function Home() {
               </Button>
               {loading ? (
                 <Button onClick={stopGeneration} aria-label="Stop generation" title="Stop generation" size="icon" variant="destructive">
-                  <StopCircle size={18} />
+                  <Square size={14} fill="currentColor" />
                 </Button>
               ) : (
                 <Button onClick={send} aria-label="Send message" disabled={loadingMessages || (!input.trim() && !attachedFile)} size="icon">
@@ -596,7 +587,7 @@ export default function Home() {
                 </Button>
               )}
             </div>
-            <p className="mt-1.5 text-center text-[11px] text-muted-foreground">SK GPT can make mistakes. Check important info.</p>
+
           </div>
         </div>
       </div>

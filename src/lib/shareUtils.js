@@ -1,8 +1,8 @@
 // Shared helpers for SK GPT conversation sharing, copying, and downloading.
 
-export const SK_GPT_NAME = 'SK GPT';
-export const SK_GPT_TAGLINE = 'SK GPT — Your intelligent assistant, in every language.';
-export const SK_GPT_FOOTER = '\n\n— Powered by SK GPT';
+export const SK_GPT_NAME = 'SK Chat';
+export const SK_GPT_TAGLINE = 'Your intelligent assistant, in every language.';
+export const SK_GPT_FOOTER = '\n\n— Powered by SK Chat';
 
 // Build plain-text version of a full conversation with SK GPT branding.
 export function buildConversationText(conversation, messages) {
