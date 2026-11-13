@@ -26,6 +26,7 @@ export default function Home() {
   const [chatType, setChatType] = useState('permanent');
   const [photoMode, setPhotoMode] = useState(false);
   const [thinkHarder, setThinkHarder] = useState(false);
+  const [specialMode, setSpecialMode] = useState(null);
   const [attachedFile, setAttachedFile] = useState(null);
   const [loading, setLoading] = useState(false);
   const [loadingConvs, setLoadingConvs] = useState(true);
@@ -108,6 +109,7 @@ export default function Home() {
     setInput('');
     setAttachedFile(null);
     setPhotoMode(false);
+    setSpecialMode(null);
   };
 
   const handleSelectConv = async (conv) => {
@@ -303,6 +305,7 @@ export default function Home() {
     voiceCaptureRef.current = false; voice.stop();
     const pendingFile = attachedFile;
     const wasPhotoMode = photoMode;
+    const modeForRequest = specialMode;
     const userContent = text || (pendingFile?.type === 'application/pdf' ? `Analyze this PDF: ${pendingFile.name}` : pendingFile?.type?.startsWith('image/') ? 'Please analyze this image.' : '(attachment)');
     const history = [...messages];
     let convId = activeId;
@@ -318,8 +321,8 @@ export default function Home() {
       const saved = await saveMessage(convId, { role: 'user', content: userContent, file_name: pendingFile?.name || '' });
       persisted = true;
       setMessages((previous) => [...previous, saved]);
-      setInput(''); setAttachedFile(null); setPhotoMode(false);
-      const reply = await requestReply({ text, userContent, pendingFile, photoMode: wasPhotoMode, messages: history, language, thinkHarder, signal: abortControllerRef.current?.signal });
+      setInput(''); setAttachedFile(null); setPhotoMode(false); setSpecialMode(null);
+      const reply = await requestReply({ text, userContent, pendingFile, photoMode: wasPhotoMode, messages: history, language, thinkHarder, specialMode: modeForRequest, signal: abortControllerRef.current?.signal });
       const savedReply = await saveMessage(convId, { role: 'assistant', ...reply });
       setMessages((previous) => [...previous, savedReply]); completed = true;
       await updateConversation(convId, { last_message_at: new Date().toISOString() });
@@ -551,6 +554,34 @@ export default function Home() {
             <input ref={galleryInputRef} type="file" accept="image/*" onChange={handleAttach} className="hidden" />
             <input ref={fileInputRef} type="file" onChange={handleAttach} className="hidden" />
             <input ref={pdfInputRef} type="file" accept="application/pdf" onChange={handleAttach} className="hidden" />
+
+            {/* SK GPT consumer superpowers */}
+            <div className="mb-2 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => { setSpecialMode(specialMode === "truthRadar" ? null : "truthRadar"); setPhotoMode(false); }}
+                aria-pressed={specialMode === "truthRadar"}
+                className={`rounded-full border px-3 py-2 text-xs font-semibold transition ${specialMode === "truthRadar" ? "border-red-500 bg-red-500 text-white" : "border-red-500/40 bg-red-500/5 text-red-600 hover:bg-red-500/10"}`}
+              >
+                🛡️ Lie & Scam Radar
+              </button>
+              <button
+                type="button"
+                onClick={() => { setSpecialMode(specialMode === "bargain" ? null : "bargain"); setPhotoMode(false); }}
+                aria-pressed={specialMode === "bargain"}
+                className={`rounded-full border px-3 py-2 text-xs font-semibold transition ${specialMode === "bargain" ? "border-emerald-600 bg-emerald-600 text-white" : "border-emerald-600/40 bg-emerald-600/5 text-emerald-700 hover:bg-emerald-600/10"}`}
+              >
+                💰 Bargain & Save Money
+              </button>
+            </div>
+            {specialMode && (
+              <p className="mb-2 text-xs text-muted-foreground">
+                {specialMode === "truthRadar"
+                  ? "Paste a suspicious message or attach a screenshot for an AI scam-risk assessment."
+                  : "Describe an item/deal or attach its photo to get ready-to-copy negotiation messages."}
+                <button type="button" onClick={() => setSpecialMode(null)} className="ml-2 underline">Turn off</button>
+              </p>
+            )}
 
             {/* Composer row: [+] [textarea] [mic] [send] */}
             <div className="flex items-end gap-2 rounded-2xl border bg-background p-2 shadow-sm">

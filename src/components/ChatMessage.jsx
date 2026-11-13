@@ -66,6 +66,56 @@ function ChatMessage({ message, onEdit, onRegenerate }) {
             : <MarkdownText>{message.content}</MarkdownText>
           )}
           {message.image_url && <ChatImage src={message.image_url} />}
+          {message.specialData?.type === "truthRadar" && (
+            <div className="mt-3 w-full max-w-xl rounded-2xl border border-red-500/30 bg-red-500/5 p-4 text-sm">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <strong className="text-base">🛡️ Truth Radar</strong>
+                <span className={`rounded-full px-3 py-1 font-bold ${Number(message.specialData.riskScore) >= 66 ? "bg-red-600 text-white" : Number(message.specialData.riskScore) >= 31 ? "bg-amber-500 text-black" : "bg-emerald-600 text-white"}`}>
+                  {Math.max(0, Math.min(100, Number(message.specialData.riskScore) || 0))}% · {message.specialData.riskLabel || "Risk estimate"}
+                </span>
+              </div>
+              <p className="mt-2 text-muted-foreground">{message.specialData.summary}</p>
+              <p className="mt-3 font-semibold">Potential hidden traps</p>
+              <ul className="mt-1 list-disc space-y-1 pl-5">
+                {(message.specialData.traps || []).slice(0, 3).map((trap, index) => <li key={index}>{trap}</li>)}
+              </ul>
+              <p className="mt-3 font-semibold">Suggested reply</p>
+              <p className="mt-1 whitespace-pre-wrap">{message.specialData.savageReply}</p>
+              <button onClick={async () => alert(await copyText(message.specialData.savageReply || "") ? "Reply copied!" : "Could not copy reply.")} className="mt-3 rounded-lg border px-3 py-2 font-semibold hover:bg-accent">Copy Savage Reply</button>
+              <p className="mt-3 text-xs text-muted-foreground">AI estimate only — not proof that a person or offer is fraudulent. Verify independently before acting.</p>
+            </div>
+          )}
+          {message.specialData?.type === "bargain" && (
+            <div className="mt-3 w-full max-w-xl rounded-2xl border border-emerald-600/30 bg-emerald-600/5 p-4 text-sm">
+              <strong className="text-base">💰 Smart Bargainer</strong>
+              {message.specialData.itemSummary && <p className="mt-2 text-muted-foreground">{message.specialData.itemSummary}</p>}
+              {[
+                ["polite", "Polite"],
+                ["firm", "Firm"],
+                ["walkAway", "Walk-Away"]
+              ].map(([key, title]) => {
+                const item = message.specialData.messages?.[key] || {};
+                return (
+                  <div key={key} className="mt-4 rounded-xl border bg-background p-3">
+                    <strong>{title}</strong>
+                    {[
+                      ["english", "English"],
+                      ["urdu", "اردو"],
+                      ["romanUrdu", "Roman Urdu"]
+                    ].map(([langKey, langTitle]) => item[langKey] ? (
+                      <div key={langKey} className="mt-3">
+                        <div className="mb-1 flex items-center justify-between gap-2">
+                          <span className="text-xs font-semibold text-muted-foreground">{langTitle}</span>
+                          <button onClick={async () => alert(await copyText(item[langKey]) ? "Message copied!" : "Could not copy message.")} className="rounded-md border px-2 py-1 text-xs hover:bg-accent">Copy</button>
+                        </div>
+                        <p dir={langKey === "urdu" ? "rtl" : "auto"} className="whitespace-pre-wrap">{item[langKey]}</p>
+                      </div>
+                    ) : null)}
+                  </div>
+                );
+              })}
+            </div>
+          )}
           {message.file_name && (
             <div className="mt-2 flex items-center gap-2 rounded-lg bg-background/50 px-3 py-2 text-xs">
               <FileText size={14} />

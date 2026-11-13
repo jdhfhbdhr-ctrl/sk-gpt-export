@@ -135,6 +135,7 @@ app.post("/api/chat", requireAuth, upload.single("file"), async (req, res) => {
     const text = String(req.body.text || "").slice(0, 20000);
     const language = String(req.body.language || "en");
     const thinkHarder = req.body.thinkHarder === "true";
+    const specialMode = String(req.body.specialMode || "");
 
     if (thinkHarder) await consumeQuota(req.user.uid, "advanced");
 
@@ -161,13 +162,28 @@ app.post("/api/chat", requireAuth, upload.single("file"), async (req, res) => {
       history.push({ role: "user", content: userContent });
     }
 
+    const specialInstructions = specialMode === "truthRadar"
+      ? `You are SK GPT Truth Radar, an evidence-aware scam and deception analyst. Analyze the supplied message, email, job offer or conversation. Do not claim certainty or treat suspicion as proof. Return ONLY valid JSON with this exact shape: {"riskScore":0,"riskLabel":"Low risk|Caution|High scam risk","summary":"short explanation","traps":["red flag 1","red flag 2","red flag 3"],"savageReply":"a firm, safe reply"}. riskScore must be an integer 0-100 representing estimated scam risk, not probability of guilt. Provide exactly 3 concrete red flags; if fewer are present, say so honestly. Never invent evidence. Recommend independent verification and never advise sharing OTPs, passwords or money. Reply text in ${language}.`
+      : specialMode === "bargain"
+      ? `You are SK GPT Smart Bargainer, a practical consumer negotiation expert. Analyze the item/deal and generate three persuasive but honest negotiation messages. Return ONLY valid JSON with this exact shape: {"itemSummary":"short item/deal summary","messages":{"polite":{"english":"...","urdu":"...","romanUrdu":"..."},"firm":{"english":"...","urdu":"...","romanUrdu":"..."},"walkAway":{"english":"...","urdu":"...","romanUrdu":"..."}}}. Include all three languages for each tone. Do not invent market prices, defects or facts. If price/details are missing, use natural placeholders or ask for them in the messages. Keep messages ready to copy.`
+      : "";
     const response = await openai.responses.create({
       model: process.env.OPENAI_MODEL || "gpt-5.4-mini",
-      instructions: `You are SK GPT, a helpful multilingual AI assistant. Reply in the user's requested language (${language}). Be accurate, clear and helpful.${thinkHarder ? " Think carefully before answering." : ""}`,
+      instructions: specialMode
+        ? specialInstructions
+        : `You are SK GPT, a helpful multilingual AI assistant. Reply in the user's requested language (${language}). Be accurate, clear and helpful.${thinkHarder ? " Think carefully before answering." : ""}`,
       input: history
     });
 
-    res.json({ reply: response.output_text || "I could not generate a response." });
+    const reply = response.output_text || "I could not generate a response.";
+    let specialData = null;
+    if (specialMode === "truthRadar" || specialMode === "bargain") {
+      try {
+        const cleaned = reply.replace(/^\\s*```(?:json)?\\s*/i, "").replace(/\\s*```\\s*$/, "");
+        specialData = JSON.parse(cleaned);
+      } catch {}
+    }
+    res.json({ reply: specialData ? "" : reply, specialData });
   } catch (error) {
     handleError(res, error);
   }
