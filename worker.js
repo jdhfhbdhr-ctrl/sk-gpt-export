@@ -169,7 +169,7 @@ async function consumeQuotas(env, uid, types) {
   const path = `users/${uid}/usage/${karachiDate()}`;
   const token = await googleAccessToken(env);
   const base = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents`;
-  const docName = `${base}/${path}`;
+  const docName = `projects/${PROJECT_ID}/databases/(default)/documents/${path}`;
 
   for (let attempt = 0; attempt < 4; attempt++) {
     const begin = await fetch(`${base}:beginTransaction`, {
