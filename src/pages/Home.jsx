@@ -27,6 +27,7 @@ export default function Home() {
   const [photoMode, setPhotoMode] = useState(false);
   const [thinkHarder, setThinkHarder] = useState(false);
   const [specialMode, setSpecialMode] = useState(null);
+  const [councilMode, setCouncilMode] = useState(false);
   const [attachedFile, setAttachedFile] = useState(null);
   const [loading, setLoading] = useState(false);
   const [loadingConvs, setLoadingConvs] = useState(true);
@@ -322,7 +323,7 @@ export default function Home() {
       persisted = true;
       setMessages((previous) => [...previous, saved]);
       setInput(''); setAttachedFile(null); setPhotoMode(false); setSpecialMode(null);
-      const reply = await requestReply({ text, userContent, pendingFile, photoMode: wasPhotoMode, messages: history, language, thinkHarder, specialMode: modeForRequest, signal: abortControllerRef.current?.signal });
+      const reply = await requestReply({ text, userContent, pendingFile, photoMode: wasPhotoMode, messages: history, language, thinkHarder, specialMode: modeForRequest, councilMode, signal: abortControllerRef.current?.signal });
       const savedReply = await saveMessage(convId, { role: 'assistant', ...reply });
       setMessages((previous) => [...previous, savedReply]); completed = true;
       await updateConversation(convId, { last_message_at: new Date().toISOString() });
@@ -555,6 +556,14 @@ export default function Home() {
             <input ref={fileInputRef} type="file" onChange={handleAttach} className="hidden" />
             <input ref={pdfInputRef} type="file" accept="application/pdf" onChange={handleAttach} className="hidden" />
 
+            {/* SK GPT AI Council */}
+            <div className="mb-2 flex flex-wrap items-center gap-2">
+              <button type="button" role="switch" aria-checked={councilMode}
+                onClick={() => setCouncilMode(v => !v)}
+                className={`rounded-full border px-3 py-2 text-xs font-semibold ${councilMode ? "border-violet-600 bg-violet-600 text-white" : "border-violet-500/40 bg-violet-500/5 text-violet-700"}`}>
+                🧠 Council Mode (3 Experts) {councilMode ? "ON" : "OFF"}
+              </button>
+            </div>
             {/* SK GPT consumer superpowers */}
             <div className="mb-2 flex flex-wrap gap-2">
               <button

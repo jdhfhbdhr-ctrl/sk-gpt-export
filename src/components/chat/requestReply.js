@@ -5,7 +5,7 @@ export const isImageRequest = (text = "") =>
   /\b(generate|create|draw|make)\b.{0,35}\b(image|picture|photo|art|logo)\b/i.test(text);
 
 export default async function requestReply({
-  text, userContent, pendingFile, photoMode, messages, language, thinkHarder, specialMode, signal
+  text, userContent, pendingFile, photoMode, messages, language, thinkHarder, specialMode, councilMode, signal
 }) {
   const user = auth.currentUser;
   if (!user) throw new Error("Please sign in again.");
@@ -15,6 +15,7 @@ export default async function requestReply({
   form.append("text", text || userContent || "");
   form.append("language", language || "en");
   form.append("thinkHarder", String(!!thinkHarder));
+form.append("councilMode", String(!!councilMode));
   form.append("photoMode", String(!!photoMode));
   if (specialMode) form.append("specialMode", specialMode);
   form.append("messages", JSON.stringify(messages || []));
@@ -43,6 +44,7 @@ export default async function requestReply({
   return {
     content: data.reply || (data.specialData ? "Analysis complete." : "") || data.content || "No response was returned.",
     image_url: "",
-    ...(data.specialData ? { specialData: { ...data.specialData, type: specialMode === "truthRadar" ? "truthRadar" : "bargain" } } : {})
+    ...(data.specialData ? { specialData: { ...data.specialData, type: specialMode === "truthRadar" ? "truthRadar" : "bargain" } } : {}),
+    ...(data.councilData ? { councilData: data.councilData } : {})
   };
 }

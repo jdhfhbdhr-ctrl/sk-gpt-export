@@ -305,6 +305,7 @@ async function chatRoute(request, env, uid) {
   const text = String(form.get("text") || "");
   const language = String(form.get("language") || "en");
   const thinkHarder = String(form.get("thinkHarder")) === "true";
+  const councilMode = String(form.get("councilMode")) === "true";
   const specialMode = String(form.get("specialMode") || "");
   const messages = JSON.parse(String(form.get("messages") || "[]"));
   const file = form.get("file");
@@ -355,7 +356,7 @@ async function chatRoute(request, env, uid) {
     : specialMode === "bargain"
     ? `You are SK GPT Smart Bargainer, a practical consumer negotiation expert. Analyze the item/deal and generate three persuasive but honest negotiation messages. Return ONLY valid JSON with this exact shape: {"itemSummary":"short item/deal summary","messages":{"polite":{"english":"...","urdu":"...","romanUrdu":"..."},"firm":{"english":"...","urdu":"...","romanUrdu":"..."},"walkAway":{"english":"...","urdu":"...","romanUrdu":"..."}}}. Include all three languages for each tone. Do not invent market prices, defects or facts. If price/details are missing, use natural placeholders or ask for them in the messages. Keep messages ready to copy.`
     : "";
-  const result = await openAI(env, "responses", {
+  const result = (councilMode && !specialMode) ? null : await openAI(env, "responses", {
     model: env.OPENAI_MODEL || "gpt-5.4-mini",
     instructions: specialMode
       ? specialInstructions
@@ -371,7 +372,67 @@ async function chatRoute(request, env, uid) {
       specialData = JSON.parse(cleaned);
     } catch {}
   }
-  return json({ reply: specialData ? "" : reply, specialData });
+
+
+  let councilData = null;
+  let finalReply = specialData ? "" : reply;
+
+  if (councilMode && !specialData) {
+    const model = env.OPENAI_MODEL || "gpt-5.4-mini";
+    const question = text || "Please answer using the conversation context.";
+
+    // Researcher and Critic work independently and simultaneously.
+    const [researcherResult, criticResult] = await Promise.all([
+      openAI(env, "responses", {
+        model,
+        instructions: `You are the Researcher in SK GPT's AI Council. Respond in ${language}. Identify factual claims, relevant evidence, logic, assumptions and uncertainty. Never invent sources or pretend to browse.`,
+        input: question
+      }),
+      openAI(env, "responses", {
+        model,
+        instructions: `You are the independent Critic in SK GPT's AI Council. Respond in ${language}. Challenge assumptions, find possible errors, missing context, risks and counterarguments. Do not simply agree with the Researcher.`,
+        input: question
+      })
+    ]);
+
+    const researcher = outputText(researcherResult);
+    const critic = outputText(criticResult);
+
+    // Strategist synthesizes both expert reports into the final answer.
+    const strategistResult = await openAI(env, "responses", {
+      model,
+      instructions: `You are the Strategist and final decision-maker of SK GPT's AI Council. Respond in ${language}. Reconcile the Researcher's findings and the Critic's objections. Return ONLY valid JSON with keys: finalAnswer (string), strategist (string explaining the synthesis), confidence (integer 0-100), confidenceLabel (string), claimsToCheck (array of strings). Confidence is only a model estimate, never claim independent verification.`,
+      input: `USER QUESTION:\n${question}\n\nRESEARCHER REPORT:\n${researcher}\n\nCRITIC REPORT:\n${critic}\n\nProduce the most accurate and practical final answer.`
+    });
+
+    try {
+      const raw = outputText(strategistResult)
+        .replace(/^\s*```(?:json)?\s*/i, "")
+        .replace(/\s*```\s*$/, "");
+      const parsed = JSON.parse(raw);
+      finalReply = parsed.finalAnswer || "The Council could not produce a final answer.";
+      councilData = {
+        researcher,
+        critic,
+        strategist: parsed.strategist || "",
+        confidence: Math.max(0, Math.min(100, Number(parsed.confidence) || 0)),
+        confidenceLabel: parsed.confidenceLabel || "AI confidence estimate",
+        claimsToCheck: Array.isArray(parsed.claimsToCheck) ? parsed.claimsToCheck : []
+      };
+    } catch (error) {
+      finalReply = `The Council experts responded, but the final synthesis could not be formatted.\\n\\nResearcher: ${researcher}\\n\\nCritic: ${critic}`;
+      councilData = {
+        researcher,
+        critic,
+        strategist: "Final synthesis formatting failed.",
+        confidence: 0,
+        confidenceLabel: "Not assessed",
+        claimsToCheck: []
+      };
+    }
+  }
+
+  return json({ reply: finalReply, specialData, councilData });
 }
 
 async function imageRoute(request, env, uid) {

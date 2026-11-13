@@ -65,6 +65,26 @@ function ChatMessage({ message, onEdit, onRegenerate }) {
             ? <p className="whitespace-pre-wrap break-words">{message.content}</p>
             : <MarkdownText>{message.content}</MarkdownText>
           )}
+
+          {message.councilData && (
+            <details className="my-3 max-w-xl rounded-xl border border-violet-500/30 bg-violet-500/5 p-3">
+              <summary className="cursor-pointer font-semibold text-violet-700">🧠 View Expert Debate · 3 Experts</summary>
+              <div className="mt-3 space-y-3 text-sm">
+                <section><strong>🔎 Researcher</strong><p className="mt-1 whitespace-pre-wrap">{message.councilData.researcher}</p></section>
+                <section><strong>🧐 Critic</strong><p className="mt-1 whitespace-pre-wrap">{message.councilData.critic}</p></section>
+                <section><strong>🎯 Strategist</strong><p className="mt-1 whitespace-pre-wrap">{message.councilData.strategist}</p></section>
+              </div>
+            </details>
+          )}
+          {message.councilData && (
+            <div className="my-2 flex flex-wrap items-center gap-2 text-xs">
+              <span className="rounded-full border px-3 py-1 font-semibold">
+                {message.councilData.confidence}% · {message.councilData.confidenceLabel}
+              </span>
+              <span className="text-muted-foreground">AI confidence estimate, not proof of truth.</span>
+            </div>
+          )}
+
           {message.image_url && <ChatImage src={message.image_url} />}
           {message.specialData?.type === "truthRadar" && (
             <div className="mt-3 w-full max-w-xl rounded-2xl border border-red-500/30 bg-red-500/5 p-4 text-sm">
