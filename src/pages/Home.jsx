@@ -1,5 +1,6 @@
 import { apiUrl } from "@/lib/apiBase";
 import React, { useEffect, useState, useRef, useCallback } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { listConversations, createConversation, updateConversation, deleteConversation, listMessages, saveMessage, clearMessages, deleteMessagesFrom } from '@/lib/chatStore';
 import { auth } from '@/lib/firebase';
 import { useAuth } from '@/lib/AuthContext';
@@ -17,6 +18,8 @@ const langLabel = (code) => (LANGUAGES.find((l) => l.code === code) || {}).label
 
 
 export default function Home() {
+  const location = useLocation();
+  const navigate = useNavigate();
   const { user } = useAuth();
   const [conversations, setConversations] = useState([]);
   const [activeId, setActiveId] = useState(null);
@@ -28,6 +31,21 @@ export default function Home() {
   const [thinkHarder, setThinkHarder] = useState(false);
   const [specialMode, setSpecialMode] = useState(null);
   const [councilMode, setCouncilMode] = useState(false);
+
+  useEffect(() => {
+    const mode = location.state?.skMode;
+    if (!mode) return;
+    if (mode === 'council') {
+      setCouncilMode(true);
+      setSpecialMode(null);
+    } else if (mode === 'truthRadar' || mode === 'bargain') {
+      setSpecialMode(mode);
+      setCouncilMode(false);
+      setPhotoMode(false);
+    }
+    navigate(location.pathname, { replace: true, state: null });
+  }, [location.key]);
+
   const [attachedFile, setAttachedFile] = useState(null);
   const [loading, setLoading] = useState(false);
   const [loadingConvs, setLoadingConvs] = useState(true);

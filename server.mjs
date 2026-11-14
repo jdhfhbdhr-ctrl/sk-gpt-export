@@ -136,6 +136,7 @@ app.post("/api/chat", requireAuth, upload.single("file"), async (req, res) => {
     const language = String(req.body.language || "en");
     const thinkHarder = req.body.thinkHarder === "true";
     const specialMode = String(req.body.specialMode || "");
+    const councilMode = req.body.councilMode === "true" && !specialMode;
 
     if (thinkHarder) await consumeQuota(req.user.uid, "advanced");
 
@@ -167,23 +168,86 @@ app.post("/api/chat", requireAuth, upload.single("file"), async (req, res) => {
       : specialMode === "bargain"
       ? `You are SK GPT Smart Bargainer, a practical consumer negotiation expert. Analyze the item/deal and generate three persuasive but honest negotiation messages. Return ONLY valid JSON with this exact shape: {"itemSummary":"short item/deal summary","messages":{"polite":{"english":"...","urdu":"...","romanUrdu":"..."},"firm":{"english":"...","urdu":"...","romanUrdu":"..."},"walkAway":{"english":"...","urdu":"...","romanUrdu":"..."}}}. Include all three languages for each tone. Do not invent market prices, defects or facts. If price/details are missing, use natural placeholders or ask for them in the messages. Keep messages ready to copy.`
       : "";
-    const response = await openai.responses.create({
-      model: process.env.OPENAI_MODEL || "gpt-5.4-mini",
+    const model = process.env.OPENAI_MODEL || "gpt-5.4-mini";
+
+    const response = councilMode ? null : await openai.responses.create({
+      model,
       instructions: specialMode
         ? specialInstructions
         : `You are SK GPT, a helpful multilingual AI assistant. Reply in the user's requested language (${language}). Be accurate, clear and helpful.${thinkHarder ? " Think carefully before answering." : ""}`,
-      input: history
+      input: history,
+      ...(thinkHarder ? { reasoning: { effort: "high" } } : {})
     });
 
-    const reply = response.output_text || "I could not generate a response.";
+    const reply = response?.output_text || "";
     let specialData = null;
+
     if (specialMode === "truthRadar" || specialMode === "bargain") {
       try {
-        const cleaned = reply.replace(/^\\s*```(?:json)?\\s*/i, "").replace(/\\s*```\\s*$/, "");
+        const cleaned = reply.replace(/^\s*```(?:json)?\s*/i, "").replace(/\s*```\s*$/, "");
         specialData = JSON.parse(cleaned);
       } catch {}
     }
-    res.json({ reply: specialData ? "" : reply, specialData });
+
+    let councilData = null;
+    let finalReply = specialData ? "" : reply;
+
+    if (councilMode && !specialData) {
+      const question = text || "Please answer using the conversation context.";
+
+      // Researcher and Critic run in parallel.
+      const [researcherResult, criticResult] = await Promise.all([
+        openai.responses.create({
+          model,
+          instructions: `You are the Researcher in SK GPT's AI Council. Respond in ${language}. Identify factual claims, relevant evidence, logic, assumptions and uncertainty. Never invent sources or pretend to browse.`,
+          input: history
+        }),
+        openai.responses.create({
+          model,
+          instructions: `You are the independent Critic in SK GPT's AI Council. Respond in ${language}. Challenge assumptions, find possible errors, missing context, risks and counterarguments. Do not simply agree with the Researcher.`,
+          input: history
+        })
+      ]);
+
+      const researcher = researcherResult.output_text || "Researcher returned no report.";
+      const critic = criticResult.output_text || "Critic returned no report.";
+
+      // Strategist synthesizes both reports.
+      const strategistResult = await openai.responses.create({
+        model,
+        instructions: `You are the Strategist and final decision-maker of SK GPT's AI Council. Respond in ${language}. Reconcile the Researcher's findings and the Critic's objections. Return ONLY valid JSON with keys: finalAnswer (string), strategist (string explaining the synthesis), confidence (integer 0-100), confidenceLabel (string), claimsToCheck (array of strings). Confidence is only a model estimate, never claim independent verification.`,
+        input: `USER QUESTION:\n${question}\n\nRESEARCHER REPORT:\n${researcher}\n\nCRITIC REPORT:\n${critic}\n\nProduce the most accurate and practical final answer.`
+      });
+
+      try {
+        const raw = (strategistResult.output_text || "")
+          .replace(/^\s*```(?:json)?\s*/i, "")
+          .replace(/\s*```\s*$/, "");
+        const parsed = JSON.parse(raw);
+
+        finalReply = parsed.finalAnswer || "The Council could not produce a final answer.";
+        councilData = {
+          researcher,
+          critic,
+          strategist: parsed.strategist || "",
+          confidence: Math.max(0, Math.min(100, Number(parsed.confidence) || 0)),
+          confidenceLabel: parsed.confidenceLabel || "AI confidence estimate",
+          claimsToCheck: Array.isArray(parsed.claimsToCheck) ? parsed.claimsToCheck : []
+        };
+      } catch {
+        finalReply = `The Council experts responded, but the final synthesis could not be formatted.\n\nResearcher: ${researcher}\n\nCritic: ${critic}`;
+        councilData = {
+          researcher,
+          critic,
+          strategist: "Final synthesis formatting failed.",
+          confidence: 0,
+          confidenceLabel: "Not assessed",
+          claimsToCheck: []
+        };
+      }
+    }
+
+    res.json({ reply: finalReply, specialData, councilData });
   } catch (error) {
     handleError(res, error);
   }

@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react';
 import { Toaster } from "@/components/ui/toaster"
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
@@ -10,22 +11,22 @@ import ScrollToTop from './components/ScrollToTop';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import PaddleProvider from '@/components/PaddleProvider';
 import Layout from '@/components/Layout';
-import Landing from '@/pages/Landing';
-import Pricing from '@/pages/Pricing';
-import Terms from '@/pages/Terms';
-import Privacy from '@/pages/Privacy';
-import RefundPolicy from '@/pages/RefundPolicy';
-import About from '@/pages/About';
-import Home from '@/pages/Home';
-import History from '@/pages/History';
-import Settings from '@/pages/Settings';
-import SKFeatures from '@/pages/SKFeatures';
-import Upgrade from '@/pages/Upgrade';
-import Login from '@/pages/Login';
-import Register from '@/pages/Register';
-import ForgotPassword from '@/pages/ForgotPassword';
-import ResetPassword from '@/pages/ResetPassword';
-import ShareConversation from '@/pages/ShareConversation';
+const Landing = lazy(() => import('@/pages/Landing'));
+const Pricing = lazy(() => import('@/pages/Pricing'));
+const Terms = lazy(() => import('@/pages/Terms'));
+const Privacy = lazy(() => import('@/pages/Privacy'));
+const RefundPolicy = lazy(() => import('@/pages/RefundPolicy'));
+const About = lazy(() => import('@/pages/About'));
+const Home = lazy(() => import('@/pages/Home'));
+const History = lazy(() => import('@/pages/History'));
+const Settings = lazy(() => import('@/pages/Settings'));
+const SKFeatures = lazy(() => import('@/pages/SKFeatures'));
+const Upgrade = lazy(() => import('@/pages/Upgrade'));
+const Login = lazy(() => import('@/pages/Login'));
+const Register = lazy(() => import('@/pages/Register'));
+const ForgotPassword = lazy(() => import('@/pages/ForgotPassword'));
+const ResetPassword = lazy(() => import('@/pages/ResetPassword'));
+const ShareConversation = lazy(() => import('@/pages/ShareConversation'));
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -52,6 +53,11 @@ const AuthenticatedApp = () => {
 
   // Render the main app
   return (
+    <Suspense fallback={
+      <div className="flex h-full min-h-[50vh] items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-muted border-t-primary" />
+      </div>
+    }>
     <Routes>
       {/* Add your page Route elements here */}
       <Route path="/login" element={<Login />} />
@@ -79,6 +85,7 @@ const AuthenticatedApp = () => {
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>
+    </Suspense>
   );
 };
 
