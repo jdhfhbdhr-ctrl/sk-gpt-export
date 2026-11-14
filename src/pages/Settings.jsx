@@ -201,14 +201,33 @@ export default function Settings() {
       setNotice("Speech playback is not supported by this browser.");
       return;
     }
+    const samples = {
+      en: ["Hello! This is your SK GPT voice preview.", "en-US"],
+      ur: ["السلام علیکم! یہ ایس کے جی پی ٹی کی آواز کا نمونہ ہے۔", "ur-PK"],
+      "roman-ur": ["Assalam o alaikum! Yeh SK GPT ki awaaz ka namoona hai.", "ur-PK"],
+      hi: ["नमस्ते! यह SK GPT की आवाज़ का नमूना है।", "hi-IN"],
+      ar: ["مرحباً! هذه معاينة صوت SK GPT.", "ar-SA"],
+      es: ["¡Hola! Esta es una prueba de voz de SK GPT.", "es-ES"],
+      fr: ["Bonjour ! Ceci est un aperçu vocal de SK GPT.", "fr-FR"],
+      de: ["Hallo! Dies ist eine SK-GPT-Stimmprobe.", "de-DE"],
+      ru: ["Здравствуйте! Это голосовой пример SK GPT.", "ru-RU"],
+      bn: ["হ্যালো! এটি SK GPT-এর কণ্ঠের নমুনা।", "bn-BD"],
+      zh: ["你好！这是 SK GPT 的语音预览。", "zh-CN"],
+      ja: ["こんにちは！SK GPTの音声プレビューです。", "ja-JP"],
+      pt: ["Olá! Esta é uma prévia de voz do SK GPT.", "pt-BR"],
+      tr: ["Merhaba! Bu SK GPT ses önizlemesidir.", "tr-TR"]
+    };
     window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance("Hello! This is your SK GPT voice preview.");
+    const [sample, lang] = samples[language] || samples.en;
+    const utterance = new SpeechSynthesisUtterance(sample);
+    utterance.lang = lang;
     utterance.rate = speed;
     const voices = window.speechSynthesis.getVoices();
-    const preferred = voices.find(v => voice === "female"
-      ? /female|zira|samantha|susan|google uk english female/i.test(v.name)
-      : /male|david|mark|daniel|google uk english male/i.test(v.name));
-    if (preferred) utterance.voice = preferred;
+    const matching = voices.filter(v => v.lang.toLowerCase().startsWith(lang.slice(0, 2)));
+    const preferred = matching.find(v => voice === "female"
+      ? /female|zira|samantha|susan|google.*female/i.test(v.name)
+      : /male|david|mark|daniel|google.*male/i.test(v.name));
+    if (preferred || matching[0]) utterance.voice = preferred || matching[0];
     window.speechSynthesis.speak(utterance);
   };
 
@@ -356,6 +375,14 @@ export default function Settings() {
                 </button>
               </div>
             </div>
+          </div>
+        </Section>
+
+        <Section icon={ShieldCheck} title="Legal & Policies" subtitle="Review SK GPT policies">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <a href="/privacy" className={buttonClass}>Privacy Policy <ChevronRight size={16} /></a>
+            <a href="/refund-policy" className={buttonClass}>Refund Policy <ChevronRight size={16} /></a>
+            <a href="/terms" className={buttonClass}>Terms & Conditions <ChevronRight size={16} /></a>
           </div>
         </Section>
 

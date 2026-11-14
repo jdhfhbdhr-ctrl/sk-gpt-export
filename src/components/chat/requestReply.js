@@ -1,3 +1,24 @@
+const detectSpeechLanguage = (text, fallback = "en") => {
+  const value = String(text || "");
+  if (/[\\u0600-\\u06FF]/.test(value)) {
+    return /[ٹڈڑںھہےں]/.test(value) ? "ur-PK" : "ar-SA";
+  }
+  if (/[\\u0900-\\u097F]/.test(value)) return "hi-IN";
+  if (/[\\u0980-\\u09FF]/.test(value)) return "bn-BD";
+  if (/[\\u4E00-\\u9FFF]/.test(value)) return "zh-CN";
+  if (/[\\u3040-\\u30FF]/.test(value)) return "ja-JP";
+  if (/[\\uAC00-\\uD7AF]/.test(value)) return "ko-KR";
+  if (/[\\u0400-\\u04FF]/.test(value)) return "ru-RU";
+  const map = {
+    en: "en-US", ur: "ur-PK", "roman-ur": "ur-PK", hi: "hi-IN",
+    ar: "ar-SA", es: "es-ES", fr: "fr-FR", de: "de-DE",
+    ru: "ru-RU", bn: "bn-BD", zh: "zh-CN", ja: "ja-JP",
+    ko: "ko-KR", pt: "pt-BR", tr: "tr-TR", it: "it-IT",
+    nl: "nl-NL", id: "id-ID"
+  };
+  return map[fallback] || fallback || "en-US";
+};
+
 
 import { apiUrl } from "@/lib/apiBase";
 import { auth } from "@/lib/firebase";
@@ -25,13 +46,7 @@ const applySpeech = (content) => {
   const speed = Number(getPreference("sk-gpt-speech-speed", 1)) || 1;
   const language = getPreference("sk-gpt-language", "en");
 
-  const langMap = {
-    en: "en-US", ur: "ur-PK", "roman-ur": "ur-PK",
-    ar: "ar-SA", hi: "hi-IN", es: "es-ES",
-    fr: "fr-FR", de: "de-DE"
-  };
-
-  utterance.lang = langMap[language] || language || "en-US";
+  utterance.lang = detectSpeechLanguage(content, language);
   utterance.rate = Math.min(1.5, Math.max(0.8, speed));
 
   const voices = window.speechSynthesis.getVoices();
@@ -42,7 +57,7 @@ const applySpeech = (content) => {
       : /female|zira|samantha|karen/i.test(v.name)
   );
 
-  if (preferred) utterance.voice = preferred;
+  if (preferred || matching[0]) utterance.voice = preferred || matching[0];
   window.speechSynthesis.speak(utterance);
 };
 
